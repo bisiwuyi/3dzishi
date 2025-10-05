@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <script type="importmap">
+   {
+      "imports": {
+         "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+         "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+         "mannequin": "https://cdn.jsdelivr.net/npm/mannequin-js@latest/src/mannequin.js"
+      }
+   }
+   </script>
+</head>
+<body>
+   <script type="module">
+      import * as THREE from "three";
+      import { createStage, Male } from "mannequin";
+
+      createStage();
+      const male = new Male();
+
+      // ---------- Utility ----------
+      function makeMesh(vertices, normals, uvs, indices, color, yOffset) {
+         const geom = new THREE.BufferGeometry();
+         geom.setIndex(indices);
+         geom.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+         geom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+         geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+         geom.computeVertexNormals();
+         const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+         const mesh = new THREE.Mesh(geom, mat);
+         mesh.position.set(0, yOffset, 0);
+         return mesh;
+      }
+
+      // ---------- SuaveMale1 ----------
+      function createSuaveMale1Hair(yOffset = 3.5) {
+         const segments = 32, rings = 16;
+         const headScale = 1.5;
+         const hairHeight = 1.5 * headScale;
+         const headRadiusX = 4.5 * 0.9 * headScale;
+         const headRadiusZ = 3.75 * 0.9 * headScale;
+         const headHeight = 6 * headScale;
+         const coverage = 0.7, waveIntensity = 0.3, noiseScale = 0.2;
+         const hairColor = 0x654321;
+
+         const v = [], n = [], u = [], idx = [];
+         for (let ring = 0; ring <= rings; ring++) {
+            const rc = Math.sin((ring / rings) * Math.PI * coverage);
+            const rx = headRadiusX * rc;
+            const rz = headRadiusZ * rc;
+            const ry = (headHeight * 0.4) * Math.cos((ring / rings) * Math.PI * coverage);
+            for (let seg = 0; seg <= segments; seg++) {
+               const ang = (seg / segments) * Math.PI * 2;
+               const x = Math.cos(ang) * rx;
+               const z = Math.sin(ang) * rz;
+               const y = ry;
+               const noiseX = Math.sin(ang * 3 + ring * 0.5) * noiseScale;
+               const noiseZ = Math.cos(ang * 2 + ring * 0.3) * noiseScale;
+               const hm = Math.sin((ring / rings) * Math.PI) * 0.8 + 0.2;
+               const wave = Math.sin(ang * 4) * waveIntensity + Math.cos(ang * 6 + ring) * (waveIntensity * 0.7);
+               const h = hairHeight * hm + wave;
+               v.push(x + noiseX, y + h + 0.2, z + noiseZ);
+               const norm = new THREE.Vector3(x, h * 2, z).normalize();
+               n.push(norm.x, norm.y, norm.z);
+               u.push(seg / segments, ring / rings);
+            }
+         }
+         for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+               const c = r * (segments + 1) + s;
+               const nx = c + segments + 1;
+               idx.push(c, nx, c + 1, nx, nx + 1, c + 1);
+            }
+         }
+         return makeMesh(v, n, u, idx, hairColor, yOffset);
+      }
+
+      // ---------- SpikyMale1 ----------
+      function createSpikyMale1Hair(yOffset = 3.5) {
+         const segments = 32, rings = 12;
+         const headScale = 1.5;
+         const hairHeight = 2.2 * headScale;
+         const headRadiusX = 4.5 * 0.9 * headScale;
+         const headRadiusZ = 3.75 * 0.9 * headScale;
+         const headHeight = 6 * headScale;
+         const coverage = 0.6, spikeIntensity = 0.8, noiseScale = 0.35;
+         const hairColor = 0x222222;
+
+         const v = [], n = [], u = [], idx = [];
+         for (let ring = 0; ring <= rings; ring++) {
+            const rc = Math.sin((ring / rings) * Math.PI * coverage);
+            const rx = headRadiusX * rc;
+            const rz = headRadiusZ * rc;
+            const ry = (headHeight * 0.4) * Math.cos((ring / rings) * Math.PI * coverage);
+            for (let seg = 0; seg <= segments; seg++) {
+               const ang = (seg / segments) * Math.PI * 2;
+               const x = Math.cos(ang) * rx;
+               const z = Math.sin(ang) * rz;
+               const y = ry;
+               const noiseX = Math.sin(ang * 6 + ring) * noiseScale;
+               const noiseZ = Math.cos(ang * 5 + ring) * noiseScale;
+               const hm = Math.pow(Math.sin((ring / rings) * Math.PI), 1.5);
+               const spike = Math.sin(ang * 12) * spikeIntensity;
+               const h = hairHeight * hm + spike;
+               v.push(x + noiseX, y + h + 0.3, z + noiseZ);
+               const norm = new THREE.Vector3(x * 2, h * 2, z * 2).normalize();
+               n.push(norm.x, norm.y, norm.z);
+               u.push(seg / segments, ring / rings);
+            }
+         }
+         for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+               const c = r * (segments + 1) + s;
+               const nx = c + segments + 1;
+               idx.push(c, nx, c + 1, nx, nx + 1, c + 1);
+            }
+         }
+         return makeMesh(v, n, u, idx, hairColor, yOffset);
+      }
+
+      // ---------- BuzzCutMale1 ----------
+      function createBuzzCutMale1Hair(yOffset = 3.5) {
+         const segments = 32, rings = 8;
+         const headScale = 1.5;
+         const hairHeight = 0.3 * headScale;
+         const headRadiusX = 4.5 * 0.9 * headScale;
+         const headRadiusZ = 3.75 * 0.9 * headScale;
+         const headHeight = 6 * headScale;
+         const coverage = 0.9, noiseScale = 0.05;
+         const hairColor = 0x444444;
+
+         const v = [], n = [], u = [], idx = [];
+         for (let ring = 0; ring <= rings; ring++) {
+            const rc = Math.sin((ring / rings) * Math.PI * coverage);
+            const rx = headRadiusX * rc;
+            const rz = headRadiusZ * rc;
+            const ry = (headHeight * 0.4) * Math.cos((ring / rings) * Math.PI * coverage);
+            for (let seg = 0; seg <= segments; seg++) {
+               const ang = (seg / segments) * Math.PI * 2;
+               const x = Math.cos(ang) * rx;
+               const z = Math.sin(ang) * rz;
+               const y = ry;
+               const noiseX = Math.sin(ang * 2) * noiseScale;
+               const noiseZ = Math.cos(ang * 3) * noiseScale;
+               const h = hairHeight * Math.sin((ring / rings) * Math.PI);
+               v.push(x + noiseX, y + h, z + noiseZ);
+               const norm = new THREE.Vector3(x, h, z).normalize();
+               n.push(norm.x, norm.y, norm.z);
+               u.push(seg / segments, ring / rings);
+            }
+         }
+         for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+               const c = r * (segments + 1) + s;
+               const nx = c + segments + 1;
+               idx.push(c, nx, c + 1, nx, nx + 1, c + 1);
+            }
+         }
+         return makeMesh(v, n, u, idx, hairColor, yOffset);
+      }
+
+      // ---------- AfroMale1 ----------
+      function createAfroMale1Hair(yOffset = 3.5) {
+         const segments = 24, rings = 24;
+         const radius = 3.0, noiseScale = 0.6;
+         const hairColor = 0x331100;
+
+         const v = [], n = [], u = [], idx = [];
+         for (let ring = 0; ring <= rings; ring++) {
+            const phi = (ring / rings) * Math.PI;
+            for (let seg = 0; seg <= segments; seg++) {
+               const theta = (seg / segments) * Math.PI * 2;
+               const x = Math.sin(phi) * Math.cos(theta);
+               const y = Math.cos(phi);
+               const z = Math.sin(phi) * Math.sin(theta);
+               const noise = (Math.sin(theta * 4 + phi * 6) * 0.5 + 1) * noiseScale;
+               const r = radius + noise;
+               v.push(x * r, y * r + yOffset, z * r);
+               const norm = new THREE.Vector3(x, y, z).normalize();
+               n.push(norm.x, norm.y, norm.z);
+               u.push(seg / segments, ring / rings);
+            }
+         }
+         for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+               const c = r * (segments + 1) + s;
+               const nx = c + segments + 1;
+               idx.push(c, nx, c + 1, nx, nx + 1, c + 1);
+            }
+         }
+         return makeMesh(v, n, u, idx, hairColor, 0); // already applied offset in vertex
+      }
+
+      // ---------- LongFlowMale1 ----------
+      function createLongFlowMale1Hair(yOffset = 3.5) {
+         const segments = 32, rings = 20;
+         const headScale = 1.5;
+         const baseHeight = 1.0 * headScale, flowLength = 4.0;
+         const headRadiusX = 4.5 * 0.9 * headScale;
+         const headRadiusZ = 3.75 * 0.9 * headScale;
+         const headHeight = 6 * headScale;
+         const coverage = 0.8, waveIntensity = 0.5, noiseScale = 0.2;
+         const hairColor = 0x553322;
+
+         const v = [], n = [], u = [], idx = [];
+         for (let ring = 0; ring <= rings; ring++) {
+            const rc = Math.sin((ring / rings) * Math.PI * coverage);
+            const rx = headRadiusX * rc;
+            const rz = headRadiusZ * rc;
+            const ry = (headHeight * 0.4) * Math.cos((ring / rings) * Math.PI * coverage);
+            for (let seg = 0; seg <= segments; seg++) {
+               const ang = (seg / segments) * Math.PI * 2;
+               const x = Math.cos(ang) * rx;
+               const z = Math.sin(ang) * rz;
+               const y = ry - (ring / rings) * flowLength + yOffset;
+               const noiseX = Math.sin(ang * 2 + ring * 0.3) * noiseScale;
+               const noiseZ = Math.cos(ang * 3 + ring * 0.5) * noiseScale;
+               const wave = Math.sin(ang * 4 + ring * 0.2) * waveIntensity;
+               const h = baseHeight + wave;
+               v.push(x + noiseX, y + h, z + noiseZ);
+               const norm = new THREE.Vector3(x, h, z).normalize();
+               n.push(norm.x, norm.y, norm.z);
+               u.push(seg / segments, ring / rings);
+            }
+         }
+         for (let r = 0; r < rings; r++) {
+            for (let s = 0; s < segments; s++) {
+               const c = r * (segments + 1) + s;
+               const nx = c + segments + 1;
+               idx.push(c, nx, c + 1, nx, nx + 1, c + 1);
+            }
+         }
+         return makeMesh(v, n, u, idx, hairColor, 0); // already applied offset in vertex
+      }
+
+      // ---------- Attach and toggle ----------
+      setTimeout(() => {
+         const hairs = [
+            createSuaveMale1Hair(3.5),
+            createSpikyMale1Hair(3.7),
+            createBuzzCutMale1Hair(5),
+            createAfroMale1Hair(10),
+            createLongFlowMale1Hair(3.8)
+         ];
+         hairs.forEach(h => {
+            male.head.add(h);
+            h.visible = false;
+         });
+         hairs[0].visible = true;
+
+         window.addEventListener("keydown", e => {
+            const key = parseInt(e.key);
+            if (key >= 1 && key <= hairs.length) {
+               hairs.forEach((h, i) => h.visible = (i === key - 1));
+            }
+         });
+         console.log("Hair styles ready: 1=Suave, 2=Spiky, 3=Buzz, 4=Afro, 5=Long Flow");
+      }, 1000);
+
+   </script>
+</body>
+</html>
