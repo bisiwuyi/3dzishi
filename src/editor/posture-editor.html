@@ -1,7 +1,8 @@
 ﻿﻿<!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
+	<title>姿势编辑器</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="posture-editor.css">
 	<script type="importmap">
@@ -18,26 +19,36 @@
 
 <body>
 	<div class="panel" style="left:0">
-		<label><input id="inverse-kinematics" type="checkbox" class="toggle"><span>Inverse<br>kinematics</span></label><br>
-		<label><input id="biological-constraints" type="checkbox" class="toggle" checked><span>Biological<br>constraints</span></label><hr>
-		<label><input id="rot-z" type="checkbox" class="toggle" checked><span id="rot-z-name">N/A</span></label><br>
-		<label><input id="rot-x" type="checkbox" class="toggle"><span id="rot-x-name">N/A</span></label><br>
-		<label><input id="rot-y" type="checkbox" class="toggle"><span id="rot-y-name">N/A</span></label><hr>
-		<label><input id="mov-x" type="checkbox" class="toggle"><span>Move X</span></label><br>
-		<label><input id="mov-y" type="checkbox" class="toggle"><span>Move Y</span></label><br>
-		<label><input id="mov-z" type="checkbox" class="toggle"><span>Move Z</span></label><br>
+		<label><input id="inverse-kinematics" type="checkbox" class="toggle"><span>反向<br>联动</span></label><br>
+		<label><input id="biological-constraints" type="checkbox" class="toggle" checked><span>人体<br>限制</span></label><hr>
+		<label><input id="rot-z" type="checkbox" class="toggle" checked><span id="rot-z-name">不可用</span></label><br>
+		<label><input id="rot-x" type="checkbox" class="toggle"><span id="rot-x-name">不可用</span></label><br>
+		<label><input id="rot-y" type="checkbox" class="toggle"><span id="rot-y-name">不可用</span></label><hr>
+		<label><input id="mov-x" type="checkbox" class="toggle"><span>横向移动</span></label><br>
+		<label><input id="mov-y" type="checkbox" class="toggle"><span>上下移动</span></label><br>
+		<label><input id="mov-z" type="checkbox" class="toggle"><span>前后移动</span></label><br>
 	</div>
 
-	<div class="panel" style="right:0; width:8em;">
-		<span class="button-group">Posture
-			<button id="gp">Get</button><br>
-			<button id="sp">Set</button><br>
-			<button id="ep">Export</button><br>
+	<div class="panel" style="right:0; width:11em;">
+		<span class="button-group">姿势
+			<button id="gp">获取</button><br>
+			<button id="sp">设置</button><br>
+			<button id="ep">导出</button><br>
 		</span>
 		<hr>
-		<span class="button-group">Figure
-			<button id="am">Add</button><br>
-			<button id="rm">Remove</button><br>
+		<span class="button-group">人偶
+			<button id="am">添加</button><br>
+			<button id="rm">删除</button><br>
+		</span>
+		<hr>
+		<span class="button-group">姿势库
+			<input id="preset-name" class="preset-name" type="text" placeholder="姿势名称">
+			<button id="save-preset">保存当前</button><br>
+			<select id="preset-list" class="preset-list">
+				<option value="">暂无保存</option>
+			</select>
+			<button id="load-preset">加载</button><br>
+			<button id="delete-preset">删除</button><br>
 		</span>
 	</div>
 

@@ -11,6 +11,7 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 
 const EPS = 0.00001;
+const PRESET_LIBRARY_STORAGE_KEY = 'mannequin.postureLibrary.v1';
 
 
 
@@ -90,53 +91,53 @@ function gaugeTexture( size = 256 ) {
 
 // name body parts and their motions
 var names = [
-	[ 'body', 'tilt', 'turn', 'bend' ],
-	[ 'pelvis', 'tilt', 'turn', 'bend' ],
-	[ 'torso', 'tilt', 'turn', 'bend' ],
-	[ 'neck', 'tilt', 'turn', 'nod' ],
-	[ 'head', 'tilt', 'turn', 'nod' ],
-	[ 'l_leg', 'straddle', 'turn', 'raise' ],
-	[ 'l_knee', '', '', 'bend' ],
-	[ 'l_ankle', 'tilt', 'turn', 'bend' ],
-	[ 'l_arm', 'straddle', 'turn', 'raise' ],
-	[ 'l_elbow', '', '', 'bend' ],
-	[ 'l_wrist', 'tilt', 'turn', 'bend' ],
-	[ 'l_finger_0', 'straddle', 'turn', 'bend' ],
-	[ 'l_finger_1', 'straddle', '', 'bend' ],
-	[ 'l_finger_2', 'straddle', '', 'bend' ],
-	[ 'l_finger_3', 'straddle', '', 'bend' ],
-	[ 'l_finger_4', 'straddle', '', 'bend' ],
-	[ 'l_mid_0', '', '', 'bend' ],
-	[ 'l_mid_1', '', '', 'bend' ],
-	[ 'l_mid_2', '', '', 'bend' ],
-	[ 'l_mid_3', '', '', 'bend' ],
-	[ 'l_mid_4', '', '', 'bend' ],
-	[ 'l_tip_0', '', '', 'bend' ],
-	[ 'l_tip_1', '', '', 'bend' ],
-	[ 'l_tip_2', '', '', 'bend' ],
-	[ 'l_tip_3', '', '', 'bend' ],
-	[ 'l_tip_4', '', '', 'bend' ],
-	[ 'r_leg', 'straddle', 'turn', 'raise' ],
-	[ 'r_knee', '', '', 'bend' ],
-	[ 'r_ankle', 'tilt', 'turn', 'bend' ],
-	[ 'r_arm', 'straddle', 'turn', 'raise' ],
-	[ 'r_elbow', '', '', 'bend' ],
-	[ 'r_wrist', 'tilt', 'turn', 'bend' ],
-	[ 'r_finger_0', 'straddle', 'turn', 'bend' ],
-	[ 'r_finger_1', 'straddle', '', 'bend' ],
-	[ 'r_finger_2', 'straddle', '', 'bend' ],
-	[ 'r_finger_3', 'straddle', '', 'bend' ],
-	[ 'r_finger_4', 'straddle', '', 'bend' ],
-	[ 'r_mid_0', '', '', 'bend' ],
-	[ 'r_mid_1', '', '', 'bend' ],
-	[ 'r_mid_2', '', '', 'bend' ],
-	[ 'r_mid_3', '', '', 'bend' ],
-	[ 'r_mid_4', '', '', 'bend' ],
-	[ 'r_tip_0', '', '', 'bend' ],
-	[ 'r_tip_1', '', '', 'bend' ],
-	[ 'r_tip_2', '', '', 'bend' ],
-	[ 'r_tip_3', '', '', 'bend' ],
-	[ 'r_tip_4', '', '', 'bend' ],
+	[ 'body', '左右倾斜', '水平转身', '前后弯曲' ],
+	[ 'pelvis', '左右倾斜', '水平转动', '前后弯曲' ],
+	[ 'torso', '左右倾斜', '水平转动', '前后弯曲' ],
+	[ 'neck', '左右歪头', '左右转头', '低头抬头' ],
+	[ 'head', '左右歪头', '左右转头', '低头抬头' ],
+	[ 'l_leg', '向外张开', '左右扭转', '前后抬腿' ],
+	[ 'l_knee', '', '', '弯曲膝盖' ],
+	[ 'l_ankle', '左右倾斜', '左右扭转', '脚踝弯曲' ],
+	[ 'l_arm', '向外张开', '左右扭转', '前后抬臂' ],
+	[ 'l_elbow', '', '', '弯曲手肘' ],
+	[ 'l_wrist', '左右倾斜', '左右扭转', '手腕弯曲' ],
+	[ 'l_finger_0', '向外张开', '左右扭转', '手指弯曲' ],
+	[ 'l_finger_1', '向外张开', '', '手指弯曲' ],
+	[ 'l_finger_2', '向外张开', '', '手指弯曲' ],
+	[ 'l_finger_3', '向外张开', '', '手指弯曲' ],
+	[ 'l_finger_4', '向外张开', '', '手指弯曲' ],
+	[ 'l_mid_0', '', '', '中段弯曲' ],
+	[ 'l_mid_1', '', '', '中段弯曲' ],
+	[ 'l_mid_2', '', '', '中段弯曲' ],
+	[ 'l_mid_3', '', '', '中段弯曲' ],
+	[ 'l_mid_4', '', '', '中段弯曲' ],
+	[ 'l_tip_0', '', '', '指尖弯曲' ],
+	[ 'l_tip_1', '', '', '指尖弯曲' ],
+	[ 'l_tip_2', '', '', '指尖弯曲' ],
+	[ 'l_tip_3', '', '', '指尖弯曲' ],
+	[ 'l_tip_4', '', '', '指尖弯曲' ],
+	[ 'r_leg', '向外张开', '左右扭转', '前后抬腿' ],
+	[ 'r_knee', '', '', '弯曲膝盖' ],
+	[ 'r_ankle', '左右倾斜', '左右扭转', '脚踝弯曲' ],
+	[ 'r_arm', '向外张开', '左右扭转', '前后抬臂' ],
+	[ 'r_elbow', '', '', '弯曲手肘' ],
+	[ 'r_wrist', '左右倾斜', '左右扭转', '手腕弯曲' ],
+	[ 'r_finger_0', '向外张开', '左右扭转', '手指弯曲' ],
+	[ 'r_finger_1', '向外张开', '', '手指弯曲' ],
+	[ 'r_finger_2', '向外张开', '', '手指弯曲' ],
+	[ 'r_finger_3', '向外张开', '', '手指弯曲' ],
+	[ 'r_finger_4', '向外张开', '', '手指弯曲' ],
+	[ 'r_mid_0', '', '', '中段弯曲' ],
+	[ 'r_mid_1', '', '', '中段弯曲' ],
+	[ 'r_mid_2', '', '', '中段弯曲' ],
+	[ 'r_mid_3', '', '', '中段弯曲' ],
+	[ 'r_mid_4', '', '', '中段弯曲' ],
+	[ 'r_tip_0', '', '', '指尖弯曲' ],
+	[ 'r_tip_1', '', '', '指尖弯曲' ],
+	[ 'r_tip_2', '', '', '指尖弯曲' ],
+	[ 'r_tip_3', '', '', '指尖弯曲' ],
+	[ 'r_tip_4', '', '', '指尖弯曲' ],
 ];
 
 
@@ -219,13 +220,19 @@ var cbInverseKinematics = document.getElementById( 'inverse-kinematics' ),
 	btnSetPosture = document.getElementById( 'sp' ),
 	btnExportPosture = document.getElementById( 'ep' ),
 	btnAddModel = document.getElementById( 'am' ),
-	btnRemoveModel = document.getElementById( 'rm' );
+	btnRemoveModel = document.getElementById( 'rm' ),
+	txtPresetName = document.getElementById( 'preset-name' ),
+	selPresetList = document.getElementById( 'preset-list' ),
+	btnSavePreset = document.getElementById( 'save-preset' ),
+	btnLoadPreset = document.getElementById( 'load-preset' ),
+	btnDeletePreset = document.getElementById( 'delete-preset' );
 
 
 // set up event handlers
 document.addEventListener( 'pointerdown', onPointerDown );
 document.addEventListener( 'pointerup', onPointerUp );
 document.addEventListener( 'pointermove', onPointerMove );
+document.addEventListener( 'keydown', onKeyDown );
 
 cbRotZ.addEventListener( 'click', processCheckBoxes );
 cbRotX.addEventListener( 'click', processCheckBoxes );
@@ -240,6 +247,11 @@ btnSetPosture.addEventListener( 'click', setPosture );
 btnExportPosture.addEventListener( 'click', exportPosture );
 btnAddModel.addEventListener( 'click', addModel );
 btnRemoveModel.addEventListener( 'click', removeModel );
+btnSavePreset.addEventListener( 'click', savePreset );
+btnLoadPreset.addEventListener( 'click', loadPreset );
+btnDeletePreset.addEventListener( 'click', deletePreset );
+
+refreshPresetLibrary();
 
 
 controls.addEventListener( 'start', function () {
@@ -300,6 +312,53 @@ function processCheckBoxes( event ) {
 }
 
 
+function axisLabel( label, shortcut ) {
+
+	return label ? label + ' (' + shortcut + ')' : '不可用';
+
+}
+
+
+function setRotationAxis( axis ) {
+
+	cbRotX.checked = axis == 'x';
+	cbRotY.checked = axis == 'y';
+	cbRotZ.checked = axis == 'z';
+	cbMovX.checked = cbMovY.checked = cbMovZ.checked = false;
+
+	processCheckBoxes();
+
+}
+
+
+function isTextEditingTarget( target ) {
+
+	if ( !target ) return false;
+	if ( target.isContentEditable ) return true;
+
+	var tagName = target.tagName?.toLowerCase();
+	return tagName == 'input' || tagName == 'textarea' || tagName == 'select';
+
+}
+
+
+function onKeyDown( event ) {
+
+	if ( event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey ) return;
+	if ( isTextEditingTarget( event.target ) ) return;
+
+	var key = event.key.toLowerCase();
+
+	if ( key == 'x' || key == 'y' || key == 'z' ) {
+
+		event.preventDefault();
+		setRotationAxis( key );
+
+	}
+
+}
+
+
 function onPointerUp( /*event*/ ) {
 
 	controls.enabled = true;
@@ -307,6 +366,24 @@ function onPointerUp( /*event*/ ) {
 	deselect();
 	renderer.setAnimationLoop( null );
 	renderer.render( scene, camera );
+
+}
+
+
+function isPanelEvent( event ) {
+
+	return event.target?.closest?.( '.panel' );
+
+}
+
+
+function blurTextEditor() {
+
+	if ( isTextEditingTarget( document.activeElement ) ) {
+
+		document.activeElement.blur();
+
+	}
 
 }
 
@@ -331,6 +408,9 @@ function deselect() {
 
 function onPointerDown( event ) {
 
+	if ( isPanelEvent( event ) ) return;
+
+	blurTextEditor();
 	userInput( event );
 
 	gauge.parent?.remove( gauge );
@@ -357,9 +437,9 @@ function onPointerDown( event ) {
 
 		select( model[ name ]);
 
-		document.getElementById( 'rot-x-name' ).innerHTML = model[ name ].nameUI.x || 'N/A';
-		document.getElementById( 'rot-y-name' ).innerHTML = model[ name ].nameUI.y || 'N/A';
-		document.getElementById( 'rot-z-name' ).innerHTML = model[ name ].nameUI.z || 'N/A';
+		document.getElementById( 'rot-x-name' ).innerHTML = axisLabel( model[ name ].nameUI.x, 'X' );
+		document.getElementById( 'rot-y-name' ).innerHTML = axisLabel( model[ name ].nameUI.y, 'Y' );
+		document.getElementById( 'rot-z-name' ).innerHTML = axisLabel( model[ name ].nameUI.z, 'Z' );
 
 		dragPoint.position.copy( obj.worldToLocal( intersects[ 0 ].point ) );
 		//obj.imageWrapper.add( dragPoint );
@@ -562,6 +642,8 @@ function animate( /*time*/ ) {
 
 function onPointerMove( event ) {
 
+	if ( isPanelEvent( event ) ) return;
+
 	if ( obj ) userInput( event );
 
 }
@@ -583,7 +665,7 @@ function getPosture() {
 
 	if ( !model ) return;
 
-	prompt( 'The current posture is shown below. Copy it to the clipboard.', model.postureString );
+	prompt( '当前姿势数据如下。请复制到剪贴板，用于之后恢复这个姿势。', model.postureString );
 
 }
 
@@ -592,7 +674,7 @@ function setPosture() {
 
 	if ( !model ) return;
 
-	var string = prompt( 'Reset the posture to:', '{"version":7,"data":["0,[0,0,0],...]}' );
+	var string = prompt( '粘贴姿势数据，确认后会把当前人偶恢复到该姿势：', '{"version":7,"data":["0,[0,0,0],...]}' );
 
 	if ( string ) {
 
@@ -606,9 +688,9 @@ function setPosture() {
 
 			model.posture = oldPosture;
 			if ( error instanceof MannequinPostureVersionError )
-				alert( error.message );
+				alert( '姿势数据版本不兼容：' + error.message );
 			else
-				alert( 'The provided posture was either invalid or impossible to understand.' );
+				alert( '提供的姿势数据无效，或无法识别。' );
 			console.error( error );
 
 		}
@@ -616,6 +698,174 @@ function setPosture() {
 		renderer.render( scene, camera );
 
 	}
+
+}
+
+
+function getPresetLibrary() {
+
+	try {
+
+		var data = JSON.parse( localStorage.getItem( PRESET_LIBRARY_STORAGE_KEY ) || '[]' );
+		return Array.isArray( data ) ? data.filter( preset => preset && preset.id && preset.name && preset.postureString ) : [];
+
+	} catch ( error ) {
+
+		console.error( error );
+		return [];
+
+	}
+
+}
+
+
+function setPresetLibrary( presets ) {
+
+	localStorage.setItem( PRESET_LIBRARY_STORAGE_KEY, JSON.stringify( presets ) );
+
+}
+
+
+function refreshPresetLibrary( selectedId = selPresetList.value ) {
+
+	var presets = getPresetLibrary();
+
+	selPresetList.innerHTML = '';
+
+	if ( presets.length == 0 ) {
+
+		var emptyOption = document.createElement( 'option' );
+		emptyOption.value = '';
+		emptyOption.textContent = '暂无保存';
+		selPresetList.appendChild( emptyOption );
+		return;
+
+	}
+
+	for ( var preset of presets ) {
+
+		var option = document.createElement( 'option' );
+		option.value = preset.id;
+		option.textContent = preset.name;
+		selPresetList.appendChild( option );
+
+	}
+
+	if ( selectedId && presets.some( preset => preset.id == selectedId ) ) {
+
+		selPresetList.value = selectedId;
+
+	}
+
+}
+
+
+function makePresetName() {
+
+	var value = txtPresetName.value.trim();
+	if ( value ) return value;
+
+	var now = new Date();
+	var pad = value => String( value ).padStart( 2, '0' );
+	return '姿势 ' + pad( now.getHours()) + ':' + pad( now.getMinutes()) + ':' + pad( now.getSeconds());
+
+}
+
+
+function savePreset() {
+
+	if ( !model ) {
+
+		alert( '当前没有可保存的人偶。' );
+		return;
+
+	}
+
+	var presets = getPresetLibrary(),
+		name = makePresetName(),
+		existingIndex = presets.findIndex( preset => preset.name == name ),
+		preset = {
+			id: existingIndex >= 0 ? presets[ existingIndex ].id : String( Date.now()) + '-' + Math.random().toString( 36 ).slice( 2 ),
+			name: name,
+			postureString: model.postureString,
+			updatedAt: new Date().toISOString()
+		};
+
+	if ( existingIndex >= 0 ) {
+
+		if ( !confirm( '姿势库中已经有“' + name + '”。是否覆盖它？' ) ) return;
+		presets[ existingIndex ] = preset;
+
+	} else {
+
+		presets.push( preset );
+
+	}
+
+	setPresetLibrary( presets );
+	txtPresetName.value = name;
+	refreshPresetLibrary( preset.id );
+	alert( '已保存到姿势库：' + name );
+
+}
+
+
+function loadPreset() {
+
+	if ( !model ) {
+
+		alert( '当前没有可加载姿势的人偶。' );
+		return;
+
+	}
+
+	var presets = getPresetLibrary(),
+		preset = presets.find( item => item.id == selPresetList.value );
+
+	if ( !preset ) {
+
+		alert( '请先在姿势库中选择一个姿势。' );
+		return;
+
+	}
+
+	var oldPosture = model.posture;
+
+	try {
+
+		model.postureString = preset.postureString;
+		txtPresetName.value = preset.name;
+		renderer.render( scene, camera );
+
+	} catch ( error ) {
+
+		model.posture = oldPosture;
+		alert( '这个姿势数据无法加载，可能已经损坏或版本不兼容。' );
+		console.error( error );
+
+	}
+
+}
+
+
+function deletePreset() {
+
+	var presets = getPresetLibrary(),
+		preset = presets.find( item => item.id == selPresetList.value );
+
+	if ( !preset ) {
+
+		alert( '请先在姿势库中选择一个姿势。' );
+		return;
+
+	}
+
+	if ( !confirm( '确定要删除“' + preset.name + '”吗？' ) ) return;
+
+	presets = presets.filter( item => item.id != preset.id );
+	setPresetLibrary( presets );
+	txtPresetName.value = '';
+	refreshPresetLibrary();
 
 }
 

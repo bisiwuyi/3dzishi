@@ -50,8 +50,8 @@ label span,
 	font-weight: bold;
 	display: inline-block;
 	margin-left: 5px;
-	text-transform: uppercase;
-	letter-spacing: 1px;
+	text-transform: none;
+	letter-spacing: 0;
 	vertical-align: middle;
 	color: white;
 	text-shadow: 0 0 0.2em gray;
@@ -81,6 +81,26 @@ button {
 	color: black;
 	margin: 0.5em 0;
 	font-size: 1em;
+}
+
+input.preset-name,
+select.preset-list {
+	box-sizing: border-box;
+	width: 100%;
+	height: 28px;
+	margin: 0.5em 0 0;
+	padding: 0 0.5em;
+	border: 1px solid gray;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 85%);
+	color: black;
+	font-family: Sans-serif;
+	font-size: 1em;
+	font-weight: bold;
+}
+
+select.preset-list {
+	cursor: pointer;
 }
 
 button:hover {
