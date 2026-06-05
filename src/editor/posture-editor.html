@@ -50,6 +50,13 @@
 			<button id="load-preset">加载</button><br>
 			<button id="delete-preset">删除</button><br>
 		</span>
+		<hr>
+		<span class="button-group">图片姿势
+			<input id="reference-image" class="panel-input" type="file" accept="image/*">
+			<canvas id="reference-preview" class="reference-preview" width="320" height="240"></canvas>
+			<button id="apply-reference-pose">识别并应用</button><br>
+			<span id="reference-pose-status" class="panel-status">未选择图片</span>
+		</span>
 	</div>
 
 	<script type="module" src="posture-editor.js"></script>

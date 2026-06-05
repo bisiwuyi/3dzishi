@@ -12,6 +12,9 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 const EPS = 0.00001;
 const PRESET_LIBRARY_STORAGE_KEY = 'mannequin.postureLibrary.v1';
+const MEDIAPIPE_TASKS_VERSION = '0.10.35';
+const POSE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task';
+const POSE_CONFIDENCE_THRESHOLD = 0.3;
 
 
 
@@ -225,7 +228,16 @@ var cbInverseKinematics = document.getElementById( 'inverse-kinematics' ),
 	selPresetList = document.getElementById( 'preset-list' ),
 	btnSavePreset = document.getElementById( 'save-preset' ),
 	btnLoadPreset = document.getElementById( 'load-preset' ),
-	btnDeletePreset = document.getElementById( 'delete-preset' );
+	btnDeletePreset = document.getElementById( 'delete-preset' ),
+	inputReferenceImage = document.getElementById( 'reference-image' ),
+	canvasReferencePreview = document.getElementById( 'reference-preview' ),
+	btnApplyReferencePose = document.getElementById( 'apply-reference-pose' ),
+	statusReferencePose = document.getElementById( 'reference-pose-status' );
+
+var referenceImage = null,
+	referenceDrawRegion = { x: 0, y: 0, width: canvasReferencePreview.width, height: canvasReferencePreview.height },
+	poseLandmarker = null,
+	poseLandmarkerPromise = null;
 
 
 // set up event handlers
@@ -250,8 +262,11 @@ btnRemoveModel.addEventListener( 'click', removeModel );
 btnSavePreset.addEventListener( 'click', savePreset );
 btnLoadPreset.addEventListener( 'click', loadPreset );
 btnDeletePreset.addEventListener( 'click', deletePreset );
+inputReferenceImage.addEventListener( 'change', loadReferenceImage );
+btnApplyReferencePose.addEventListener( 'click', detectAndApplyReferencePose );
 
 refreshPresetLibrary();
+drawEmptyReferencePreview();
 
 
 controls.addEventListener( 'start', function () {
@@ -866,6 +881,479 @@ function deletePreset() {
 	setPresetLibrary( presets );
 	txtPresetName.value = '';
 	refreshPresetLibrary();
+
+}
+
+
+function setReferencePoseStatus( message ) {
+
+	statusReferencePose.textContent = message;
+
+}
+
+
+function getReferencePreviewContext() {
+
+	return canvasReferencePreview.getContext( '2d' );
+
+}
+
+
+function drawEmptyReferencePreview() {
+
+	var ctx = getReferencePreviewContext();
+	ctx.clearRect( 0, 0, canvasReferencePreview.width, canvasReferencePreview.height );
+	ctx.fillStyle = 'rgba(255,255,255,0.65)';
+	ctx.fillRect( 0, 0, canvasReferencePreview.width, canvasReferencePreview.height );
+	ctx.fillStyle = 'rgba(0,0,0,0.45)';
+	ctx.font = 'bold 20px sans-serif';
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	ctx.fillText( '参考图', canvasReferencePreview.width / 2, canvasReferencePreview.height / 2 );
+
+}
+
+
+function drawReferencePreview( landmarks ) {
+
+	var ctx = getReferencePreviewContext();
+	ctx.clearRect( 0, 0, canvasReferencePreview.width, canvasReferencePreview.height );
+
+	if ( !referenceImage ) {
+
+		drawEmptyReferencePreview();
+		return;
+
+	}
+
+	var scale = Math.min( canvasReferencePreview.width / referenceImage.naturalWidth, canvasReferencePreview.height / referenceImage.naturalHeight ),
+		width = referenceImage.naturalWidth * scale,
+		height = referenceImage.naturalHeight * scale,
+		x = ( canvasReferencePreview.width - width ) / 2,
+		y = ( canvasReferencePreview.height - height ) / 2;
+
+	referenceDrawRegion = { x: x, y: y, width: width, height: height };
+
+	ctx.fillStyle = 'rgba(255,255,255,0.65)';
+	ctx.fillRect( 0, 0, canvasReferencePreview.width, canvasReferencePreview.height );
+	ctx.drawImage( referenceImage, x, y, width, height );
+
+	if ( landmarks ) drawPoseOverlay( ctx, landmarks );
+
+}
+
+
+function drawPoseOverlay( ctx, landmarks ) {
+
+	var connections = [
+		[ 11, 12 ], [ 11, 13 ], [ 13, 15 ], [ 12, 14 ], [ 14, 16 ],
+		[ 11, 23 ], [ 12, 24 ], [ 23, 24 ], [ 23, 25 ], [ 25, 27 ], [ 24, 26 ], [ 26, 28 ],
+		[ 27, 31 ], [ 28, 32 ]
+	];
+
+	ctx.lineWidth = 4;
+	ctx.strokeStyle = 'rgba(46, 204, 113, 0.9)';
+	ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+
+	for ( var connection of connections ) {
+
+		var a = landmarks[ connection[ 0 ]],
+			b = landmarks[ connection[ 1 ]];
+
+		if ( !isLandmarkUsable( a ) || !isLandmarkUsable( b ) ) continue;
+
+		var pa = referenceCanvasPoint( a ),
+			pb = referenceCanvasPoint( b );
+
+		ctx.beginPath();
+		ctx.moveTo( pa.x, pa.y );
+		ctx.lineTo( pb.x, pb.y );
+		ctx.stroke();
+
+	}
+
+	for ( var landmark of landmarks ) {
+
+		if ( !isLandmarkUsable( landmark ) ) continue;
+
+		var p = referenceCanvasPoint( landmark );
+		ctx.beginPath();
+		ctx.arc( p.x, p.y, 4, 0, Math.PI * 2 );
+		ctx.fill();
+
+	}
+
+}
+
+
+function referenceCanvasPoint( landmark ) {
+
+	return {
+		x: referenceDrawRegion.x + landmark.x * referenceDrawRegion.width,
+		y: referenceDrawRegion.y + landmark.y * referenceDrawRegion.height
+	};
+
+}
+
+
+function loadReferenceImage() {
+
+	var file = inputReferenceImage.files?.[ 0 ];
+
+	if ( !file ) {
+
+		referenceImage = null;
+		drawEmptyReferencePreview();
+		setReferencePoseStatus( '未选择图片' );
+		return;
+
+	}
+
+	var image = new Image(),
+		url = URL.createObjectURL( file );
+
+	image.onload = function () {
+
+		URL.revokeObjectURL( url );
+		referenceImage = image;
+		drawReferencePreview();
+		setReferencePoseStatus( '图片已加载' );
+
+	};
+
+	image.onerror = function () {
+
+		URL.revokeObjectURL( url );
+		referenceImage = null;
+		drawEmptyReferencePreview();
+		setReferencePoseStatus( '图片加载失败' );
+
+	};
+
+	image.src = url;
+
+}
+
+
+async function getPoseLandmarker() {
+
+	if ( poseLandmarker ) return poseLandmarker;
+	if ( poseLandmarkerPromise ) return poseLandmarkerPromise;
+
+	poseLandmarkerPromise = createPoseLandmarker();
+	try {
+
+		poseLandmarker = await poseLandmarkerPromise;
+		return poseLandmarker;
+
+	} catch ( error ) {
+
+		poseLandmarkerPromise = null;
+		throw error;
+
+	}
+
+}
+
+
+async function createPoseLandmarker() {
+
+	var vision = await import( 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@' + MEDIAPIPE_TASKS_VERSION + '/+esm' ),
+		filesetResolver = await vision.FilesetResolver.forVisionTasks( 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@' + MEDIAPIPE_TASKS_VERSION + '/wasm' );
+
+	try {
+
+		return await vision.PoseLandmarker.createFromOptions(
+			filesetResolver,
+			{
+				baseOptions: {
+					modelAssetPath: POSE_MODEL_URL,
+					delegate: 'GPU'
+				},
+				runningMode: 'IMAGE',
+				numPoses: 1
+			}
+		);
+
+	} catch ( error ) {
+
+		console.warn( error );
+		return await vision.PoseLandmarker.createFromOptions(
+			filesetResolver,
+			{
+				baseOptions: {
+					modelAssetPath: POSE_MODEL_URL,
+					delegate: 'CPU'
+				},
+				runningMode: 'IMAGE',
+				numPoses: 1
+			}
+		);
+
+	}
+
+}
+
+
+async function detectAndApplyReferencePose() {
+
+	if ( !referenceImage ) {
+
+		alert( '请先选择一张参考图片。' );
+		return;
+
+	}
+
+	if ( !model ) {
+
+		alert( '当前没有可应用姿势的人偶。' );
+		return;
+
+	}
+
+	try {
+
+		setReferencePoseStatus( '正在加载模型...' );
+		var landmarker = await getPoseLandmarker();
+
+		setReferencePoseStatus( '正在识别...' );
+		var result = landmarker.detect( referenceImage ),
+			landmarks = result.landmarks?.[ 0 ];
+
+		if ( !landmarks ) {
+
+			drawReferencePreview();
+			setReferencePoseStatus( '未识别到人物' );
+			return;
+
+		}
+
+		drawReferencePreview( landmarks );
+		var appliedCount = applyReferencePoseToModel( landmarks );
+		setReferencePoseStatus( '已应用 ' + appliedCount + ' 个关节' );
+
+	} catch ( error ) {
+
+		console.error( error );
+		setReferencePoseStatus( '识别失败' );
+		alert( '图片姿势识别失败，请检查网络或换一张参考图。' );
+
+	}
+
+}
+
+
+function applyReferencePoseToModel( landmarks ) {
+
+	var appliedCount = 0;
+
+	resetAutoPoseJoints();
+
+	appliedCount += applyArmPose( landmarks, 'l' );
+	appliedCount += applyArmPose( landmarks, 'r' );
+	appliedCount += applyLegPose( landmarks, 'l' );
+	appliedCount += applyLegPose( landmarks, 'r' );
+	appliedCount += applyTorsoPose( landmarks );
+	appliedCount += applyHeadPose( landmarks );
+
+	model.updateMatrixWorld( true );
+	renderer.render( scene, camera );
+
+	return appliedCount;
+
+}
+
+
+function resetAutoPoseJoints() {
+
+	model.torso.tilt = 0;
+	model.torso.turn = 0;
+	model.torso.bend = 2;
+
+	model.head.tilt = 0;
+	model.head.turn = 0;
+	model.head.nod = -10;
+
+	for ( var side of [ 'l', 'r' ] ) {
+
+		model[ side + '_arm' ].straddle = 7;
+		model[ side + '_arm' ].turn = 0;
+		model[ side + '_arm' ].raise = -5;
+		model[ side + '_elbow' ].bend = 15;
+
+		model[ side + '_leg' ].straddle = 0;
+		model[ side + '_leg' ].turn = 0;
+		model[ side + '_leg' ].raise = 0;
+		model[ side + '_knee' ].bend = 0;
+
+	}
+
+}
+
+
+function applyArmPose( landmarks, side ) {
+
+	var shoulder = landmarks[ side == 'l' ? 11 : 12 ],
+		elbow = landmarks[ side == 'l' ? 13 : 14 ],
+		wrist = landmarks[ side == 'l' ? 15 : 16 ];
+
+	if ( !areLandmarksUsable( shoulder, elbow, wrist ) ) return 0;
+
+	var bodyCenter = landmarkCenter( landmarks[ 11 ], landmarks[ 12 ], landmarks[ 23 ], landmarks[ 24 ] ),
+		arm = model[ side + '_arm' ],
+		elbowJoint = model[ side + '_elbow' ],
+		awayDirection = Math.sign( shoulder.x - bodyCenter.x ) || ( side == 'l' ? 1 : -1 ),
+		outward = ( elbow.x - shoulder.x ) * awayDirection,
+		down = elbow.y - shoulder.y,
+		straddle = clamp( Math.atan2( outward, down ) * 180 / Math.PI, -25, 135 ),
+		raise = clamp( ( shoulder.y - elbow.y ) * 120, -35, 80 ),
+		bend = jointBend( shoulder, elbow, wrist );
+
+	arm.straddle = straddle;
+	arm.raise = raise;
+	arm.turn = 0;
+	elbowJoint.bend = bend;
+
+	return 3;
+
+}
+
+
+function applyLegPose( landmarks, side ) {
+
+	var hip = landmarks[ side == 'l' ? 23 : 24 ],
+		knee = landmarks[ side == 'l' ? 25 : 26 ],
+		ankle = landmarks[ side == 'l' ? 27 : 28 ];
+
+	if ( !areLandmarksUsable( hip, knee, ankle ) ) return 0;
+
+	var bodyCenter = landmarkCenter( landmarks[ 23 ], landmarks[ 24 ] ),
+		leg = model[ side + '_leg' ],
+		kneeJoint = model[ side + '_knee' ],
+		awayDirection = Math.sign( hip.x - bodyCenter.x ) || ( side == 'l' ? 1 : -1 ),
+		outward = ( knee.x - hip.x ) * awayDirection,
+		down = knee.y - hip.y,
+		straddle = clamp( Math.atan2( outward, down ) * 180 / Math.PI, -35, 65 ),
+		raise = clamp( ( hip.y - knee.y ) * 120, 0, 90 ),
+		bend = jointBend( hip, knee, ankle );
+
+	leg.straddle = straddle;
+	leg.raise = raise;
+	leg.turn = 0;
+	kneeJoint.bend = bend;
+
+	return 3;
+
+}
+
+
+function applyTorsoPose( landmarks ) {
+
+	var lShoulder = landmarks[ 11 ],
+		rShoulder = landmarks[ 12 ],
+		lHip = landmarks[ 23 ],
+		rHip = landmarks[ 24 ];
+
+	if ( !areLandmarksUsable( lShoulder, rShoulder, lHip, rHip ) ) return 0;
+
+	var shoulderCenter = landmarkCenter( lShoulder, rShoulder ),
+		hipCenter = landmarkCenter( lHip, rHip ),
+		tilt = clamp( Math.atan2( shoulderCenter.x - hipCenter.x, hipCenter.y - shoulderCenter.y ) * 180 / Math.PI, -25, 25 );
+
+	model.torso.tilt = tilt;
+
+	return 1;
+
+}
+
+
+function applyHeadPose( landmarks ) {
+
+	var nose = landmarks[ 0 ],
+		lShoulder = landmarks[ 11 ],
+		rShoulder = landmarks[ 12 ];
+
+	if ( !areLandmarksUsable( nose, lShoulder, rShoulder ) ) return 0;
+
+	var shoulderCenter = landmarkCenter( lShoulder, rShoulder ),
+		shoulderWidth = Math.max( Math.abs( lShoulder.x - rShoulder.x ), EPS ),
+		headTurn = clamp( ( nose.x - shoulderCenter.x ) / shoulderWidth * 45, -45, 45 ),
+		headNod = clamp( ( nose.y - shoulderCenter.y ) * 55, -25, 25 );
+
+	model.head.turn = headTurn;
+	model.head.nod = headNod;
+
+	return 2;
+
+}
+
+
+function landmarkCenter( ...landmarks ) {
+
+	var usableLandmarks = landmarks.filter( isLandmarkUsable ),
+		sum = usableLandmarks.reduce( ( acc, landmark ) => {
+
+			acc.x += landmark.x;
+			acc.y += landmark.y;
+			acc.z += landmark.z || 0;
+			return acc;
+
+		}, { x: 0, y: 0, z: 0 } );
+
+	if ( usableLandmarks.length == 0 ) return { x: 0.5, y: 0.5, z: 0 };
+
+	return {
+		x: sum.x / usableLandmarks.length,
+		y: sum.y / usableLandmarks.length,
+		z: sum.z / usableLandmarks.length
+	};
+
+}
+
+
+function areLandmarksUsable( ...landmarks ) {
+
+	return landmarks.every( isLandmarkUsable );
+
+}
+
+
+function isLandmarkUsable( landmark ) {
+
+	if ( !landmark ) return false;
+	if ( landmark.visibility !== undefined && landmark.visibility < POSE_CONFIDENCE_THRESHOLD ) return false;
+	if ( landmark.presence !== undefined && landmark.presence < POSE_CONFIDENCE_THRESHOLD ) return false;
+	return true;
+
+}
+
+
+function jointBend( a, b, c ) {
+
+	var angle = angleBetweenPoints( a, b, c );
+	return clamp( 180 - angle, 0, 150 );
+
+}
+
+
+function angleBetweenPoints( a, b, c ) {
+
+	var ab = { x: a.x - b.x, y: a.y - b.y },
+		cb = { x: c.x - b.x, y: c.y - b.y },
+		dot = ab.x * cb.x + ab.y * cb.y,
+		abLength = Math.hypot( ab.x, ab.y ),
+		cbLength = Math.hypot( cb.x, cb.y );
+
+	if ( abLength < EPS || cbLength < EPS ) return 180;
+
+	return Math.acos( clamp( dot / ( abLength * cbLength ), -1, 1 ) ) * 180 / Math.PI;
+
+}
+
+
+function clamp( value, min, max ) {
+
+	return Math.min( Math.max( value, min ), max );
 
 }
 
